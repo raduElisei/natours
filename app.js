@@ -9,6 +9,7 @@ const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 
+// start express app
 const app = express(); //ca sa putem folosi metode express pe "app"
 
 // 1. MIDDLEWARES - sunt aplicate pe toate rutele sau pe rute cu anumiti parametri - "param" middleware
