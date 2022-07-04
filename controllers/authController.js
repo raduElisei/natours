@@ -17,6 +17,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    passwordChangedAt: req.body.passwordChangedAt
   });
 
   const jwtToken = signToken(newUser._id);
@@ -73,9 +74,19 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
   // 2) Verification of jwt
   const decoded = await promisify(jwt.verify)(jwtToken, process.env.JWT_SECRET); // aici am promisificat jwt.verify
-  console.log(decoded);
+
   // 3) Check if user still exists
+  const currentUser = await User.findById(decoded.id); // aici ne asiguram ca userul inca exista dupa ce s-a verificat jwt-ul
+  if(!currentUser) {
+    return next(new AppError('The user belonging to this user does no longer exist.', 401)); // daca userul a fost sters dupa ce s-a issue-it jwt atunci eroare, pentru ca cineva poate intercepta jwt-ul dupa ce userul a fost sters ca sa foloseasca API-ul ca acel user
+  }
 
   // 4) Check if user changed password after JWT was issued
+  if (currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(new AppError('User recently changed password! Please log in again!', 401));
+  }
+  
+  // Grant acces to protected route (in route handler)
+  req.user = currentUser;
   next();
 });
