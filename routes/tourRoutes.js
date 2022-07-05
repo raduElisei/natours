@@ -24,6 +24,8 @@ router
   .route('/:id')
   .get(tourController.getTour)
   .patch(tourController.updateTour)
-  .delete(tourController.deleteTour);
+  .delete(authController.protect,
+          authController.restrictTo('admin', 'lead-guide'), //authController.protect trebuie sa fie primul middleware
+          tourController.deleteTour); 
 
 module.exports = router;

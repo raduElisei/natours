@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
@@ -23,6 +24,11 @@ const userSchema = new mongoose.Schema({
   photo: {
     type: String,
   },
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user',
+  },
   password: {
     type: String,
     required: [true, 'A user must have a password.'],
@@ -40,7 +46,9 @@ const userSchema = new mongoose.Schema({
       message: "Passwords don't match.",
     },
   },
-  passwordChangedAt: Date // majoritatea userilor nu vor avea asta deoarece nu-si schimba parola
+  passwordChangedAt: Date, // majoritatea userilor nu vor avea asta deoarece nu-si schimba parola
+  passwordResetToken: String,
+  passwordResetExpires: Date,
 });
 
 // pre save document middleware pentru criptarea parolei
@@ -66,15 +74,34 @@ userSchema.methods.correctPassword = async function (
   return await bcrypt.compare(candidatePassword, userPassword); // returneaza true/false
 };
 
-userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
-  if(this.passwordChangedAt) {
-    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
 
     return JWTTimestamp < changedTimestamp; // 100 < 200 => true, parola a fost schimbata dupa token
   }
 
   return false; // default false adica nu a fost schimbata parola dupa timestamp
-}
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  // il cream separat de authController
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  console.log({ resetToken }, this.passwordResetToken);
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
+};
 
 const User = mongoose.model('User', userSchema);
 

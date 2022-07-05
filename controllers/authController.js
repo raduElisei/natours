@@ -10,6 +10,7 @@ const signToken = (id) => {
   });
 };
 
+// dupa ce modificam schema trebuie sa venim aici sa schimbam functia signup
 exports.signup = catchAsync(async (req, res, next) => {
   const newUser = await User.create({
     // aici puteam sa lasam User.create(req.body) dar asta insemna ca userul putea inputa ce dorea el in plus la name, email, password (cum ar fi daca am avea un admin: true sau ceva de genul)
@@ -17,7 +18,8 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
-    passwordChangedAt: req.body.passwordChangedAt
+    passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role,
   });
 
   const jwtToken = signToken(newUser._id);
@@ -77,16 +79,49 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // 3) Check if user still exists
   const currentUser = await User.findById(decoded.id); // aici ne asiguram ca userul inca exista dupa ce s-a verificat jwt-ul
-  if(!currentUser) {
-    return next(new AppError('The user belonging to this user does no longer exist.', 401)); // daca userul a fost sters dupa ce s-a issue-it jwt atunci eroare, pentru ca cineva poate intercepta jwt-ul dupa ce userul a fost sters ca sa foloseasca API-ul ca acel user
+  if (!currentUser) {
+    return next(
+      new AppError('The user belonging to this user does no longer exist.', 401)
+    ); // daca userul a fost sters dupa ce s-a issue-it jwt atunci eroare, pentru ca cineva poate intercepta jwt-ul dupa ce userul a fost sters ca sa foloseasca API-ul ca acel user
   }
 
   // 4) Check if user changed password after JWT was issued
   if (currentUser.changedPasswordAfter(decoded.iat)) {
-    return next(new AppError('User recently changed password! Please log in again!', 401));
+    return next(
+      new AppError('User recently changed password! Please log in again!', 401)
+    );
   }
-  
+
   // Grant acces to protected route (in route handler)
   req.user = currentUser;
   next();
 });
+
+exports.restrictTo = (...roles) => {
+  // restrictTo e de fapt o functie wrapper in care vom pume o alta functie (cea care chiar face ceva), deoarece nu putem avea argumente in middleware
+  return (req, res, next) => {
+    // roles is an array ex: ['admin', 'lead-guide']. role = 'user
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permission to perform this function', 403)
+      ); // 403 inseamna 'forbidden'
+    }
+
+    next();
+  };
+};
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // 1) Get user based on posted email
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    next(new AppError('There is no user with that email address.', 404));
+  }
+
+  // 2) Generate random reset token
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false }); // validateBeforeSave opreste toti validatorii specificati in schema
+
+  // 3)Send it to user's email
+});
+exports.resetPassword = (req, res, next) => {};

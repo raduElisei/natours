@@ -8,6 +8,9 @@ const router = express.Router();
 router.post('/signup', authController.signup); // nu are legatura ccu stilul arhitectural REST deoarece nu are sens
 router.post('/login', authController.login);
 
+router.post('/forgotPassword', authController.forgotPassword);
+router.post('/resetPassword', authController.resetPassword);
+
 router
   .route('/') // conform cu arhiectura REST numele URI-ului nu are legatura cu metodele/actiunile folosite
   .get(userController.getAllUsers)
