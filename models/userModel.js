@@ -65,6 +65,14 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+userSchema.pre('save', function (next) {
+  // aceasta functie ruleaza inainte de salvare in DB
+  if (!this.isModified('password') || this.isNew) return next(); // daca parola nu e modificata nu schimba proprietatea passwordChangedAt
+
+  this.passwordChangedAt = Date.now() - 1000; // ne asiguram ca passwordChangedAt e creat inainte de datul jwt-ului
+  next();
+});
+
 // acum creem un "instance method" care va fi valabila doar documentelor unei anumite colectii
 userSchema.methods.correctPassword = async function (
   candidatePassword,

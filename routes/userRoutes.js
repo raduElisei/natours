@@ -9,7 +9,13 @@ router.post('/signup', authController.signup); // nu are legatura ccu stilul arh
 router.post('/login', authController.login);
 
 router.post('/forgotPassword', authController.forgotPassword);
-router.post('/resetPassword', authController.resetPassword);
+router.patch('/resetPassword/:token', authController.resetPassword);
+
+router.patch(
+  '/updateMyPassword/',
+  authController.protect,
+  authController.updatePassword
+);
 
 router
   .route('/') // conform cu arhiectura REST numele URI-ului nu are legatura cu metodele/actiunile folosite
